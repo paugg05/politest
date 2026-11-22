@@ -1,9 +1,11 @@
-package com.politest.figure.figure;
+package com.politest.figure.adapter.out.persistence;
 
-import com.politest.figure.figure.FigureModels.DatasetInfo;
-import com.politest.figure.figure.FigureModels.Figure;
-import com.politest.figure.figure.FigureModels.FigureWithPositions;
-import com.politest.figure.figure.FigureModels.Position;
+import com.politest.figure.application.port.out.FigureCatalog;
+import com.politest.figure.domain.model.Axes;
+import com.politest.figure.domain.model.DatasetInfo;
+import com.politest.figure.domain.model.Figure;
+import com.politest.figure.domain.model.FigureWithPositions;
+import com.politest.figure.domain.model.Position;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,17 +15,17 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
-/** Acceso a la base de datos propia del servicio (JDBC sencillo: solo lecturas). */
+/** Outbound adapter: reads the figure catalogue from MySQL with {@link JdbcClient} (read-only queries). */
 @Repository
-public class FigureRepository {
+class JdbcFigureCatalog implements FigureCatalog {
 
     private final JdbcClient jdbc;
 
-    public FigureRepository(JdbcClient jdbc) {
+    JdbcFigureCatalog(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
-    /** Personajes activos con textos en el idioma indicado (es, ca o en). */
+    @Override
     public List<FigureWithPositions> findAllActive(String lang) {
         List<Figure> figures = jdbc.sql("""
                         SELECT f.code, t.name, t.description, f.birth_year, f.death_year, f.color
@@ -52,14 +54,19 @@ public class FigureRepository {
                         Collectors.mapping(Row::position, Collectors.toList())));
 
         return figures.stream()
-                .map(f -> new FigureWithPositions(f, sorted(byFigure.getOrDefault(f.code(), List.of()))))
+                .map(figure -> new FigureWithPositions(figure,
+                        sorted(byFigure.getOrDefault(figure.code(), List.of()))))
                 .toList();
     }
 
+    @Override
     public Optional<FigureWithPositions> findByCode(String code, String lang) {
-        return findAllActive(lang).stream().filter(f -> f.figure().code().equalsIgnoreCase(code)).findFirst();
+        return findAllActive(lang).stream()
+                .filter(figure -> figure.figure().code().equalsIgnoreCase(code))
+                .findFirst();
     }
 
+    @Override
     public DatasetInfo datasetInfo() {
         return jdbc.sql("SELECT version, status, note, updated_on FROM dataset_info WHERE id = 1")
                 .query((rs, n) -> new DatasetInfo(rs.getString("version"), rs.getString("status"),
@@ -69,7 +76,7 @@ public class FigureRepository {
 
     private static List<Position> sorted(List<Position> positions) {
         return positions.stream()
-                .sorted(Comparator.comparingInt(p -> Axes.ORDER.indexOf(p.axis())))
+                .sorted(Comparator.comparingInt(position -> Axes.ORDER.indexOf(position.axis())))
                 .toList();
     }
 }

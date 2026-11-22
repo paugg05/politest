@@ -1,18 +1,20 @@
-package com.politest.figure.figure;
+package com.politest.figure.domain.model;
 
 import java.util.List;
 import java.util.Set;
 
 /**
- * Códigos de los 8 ejes. Es parte del CONTRATO con la aplicación principal (que tiene su propio catálogo):
- * si algún día cambian los ejes, hay que cambiarlos en todos los servicios.
+ * Codes of the eight ideological axes and the languages the figure texts are available in.
+ *
+ * <p>The axis codes are part of the contract with the main web application, which keeps its own catalogue.
+ * If the axes ever change, every service must change.
  */
 public final class Axes {
 
     public static final List<String> ORDER =
             List.of("ECON", "WELFARE", "LIBERTY", "CULTURE", "NATION", "ECOLOGY", "DEMOCRACY", "CHANGE");
     public static final Set<String> CODES = Set.copyOf(ORDER);
-    /** Idiomas con textos en la base de datos. */
+    /** Languages with texts in the database. */
     public static final Set<String> LANGS = Set.of("es", "ca", "en");
 
     private Axes() {
