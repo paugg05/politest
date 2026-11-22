@@ -1,0 +1,27 @@
+# Base de datos PROPIA del party-service (un microservicio no comparte base de datos con los demás).
+# Contraseñas solo para desarrollo local.
+services:
+  party-db:
+    image: mysql:8.4
+    container_name: party-db
+    environment:
+      MYSQL_DATABASE: politest_parties
+      MYSQL_USER: parties
+      MYSQL_PASSWORD: parties
+      MYSQL_ROOT_PASSWORD: root
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "3307:3306"
+    volumes:
+      - party-db-data:/var/lib/mysql
+  party-phpmyadmin:
+    image: phpmyadmin:5
+    container_name: party-phpmyadmin
+    environment:
+      PMA_HOST: party-db
+    ports:
+      - "8083:80"
+    depends_on:
+      - party-db
+volumes:
+  party-db-data:
