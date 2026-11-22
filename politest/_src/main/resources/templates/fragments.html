@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title, description, robots)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title}">Test</title>
+    <meta name="description" th:if="${description != null}" th:content="${description}">
+    <meta name="robots"
+          th:content="${robots == 'index'} ? 'index,follow' : (${robots == 'noindex_follow'} ? 'noindex,follow' : 'noindex,nofollow')">
+    <link rel="canonical" th:href="${canonicalUrl}">
+    <link rel="alternate" th:each="alt : ${alternates}" th:attr="hreflang=${alt.key}" th:href="${alt.value}">
+    <link rel="alternate" hreflang="x-default" th:href="${baseUrl} + '/'">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" th:content="#{app.title}">
+    <meta property="og:title" th:content="${title}">
+    <meta property="og:description" th:if="${description != null}" th:content="${description}">
+    <meta property="og:url" th:content="${canonicalUrl}">
+    <meta property="og:locale" th:content="${ogLocale}">
+    <meta property="og:image" th:content="${baseUrl} + '/img/og-' + ${lang} + '.png'">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header th:fragment="header" class="site-header">
+    <a class="brand" th:href="@{'/' + ${lang} + '/'}" th:text="#{app.title}">Test</a>
+    <nav class="lang" th:attr="aria-label=#{nav.language}">
+        <a th:each="l : ${langs}"
+           th:href="@{'/' + ${l} + ${rest}}"
+           th:text="${#strings.toUpperCase(l)}"
+           th:classappend="${l == lang} ? 'active'"
+           th:attr="hreflang=${l},lang=${l}">ES</a>
+    </nav>
+</header>
+
+<footer th:fragment="footer" class="site-footer">
+    <nav th:attr="aria-label=#{footer.nav}">
+        <a th:href="@{'/' + ${lang} + '/legal'}" th:text="#{footer.legal}">Información legal</a>
+    </nav>
+    <p>© <span th:text="${year}">2026</span> <span th:text="#{app.title}">Test político</span></p>
+</footer>
+
+<!-- Logo de un polo: círculo de color con el icono en trazo blanco. Se dibuja con código (sin ficheros de imagen). -->
+<span th:fragment="badge(color, icon)" class="pole-badge" th:style="'background:' + ${color}" aria-hidden="true">
+    <svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#ffffff" stroke-width="4"
+         stroke-linecap="round" stroke-linejoin="round" th:utext="${icon}"></svg>
+</span>
+
+<!-- Perfil: bandera + lema + los 3 rasgos más fuertes. share.js dibuja #flag y #slogan en la imagen descargable. -->
+<section th:fragment="profile(profile)" class="profile">
+    <p th:if="${profile.balanced()}" class="balanced" th:text="#{result.profile.balanced}">Perfil equilibrado</p>
+    <div th:unless="${profile.balanced()}">
+        <figure class="flag-box">
+            <svg id="flag" class="flag" viewBox="0 0 300 200" width="300" height="200" role="img"
+                 th:attr="aria-label=#{result.flag.alt(${profile.slogan})}">
+                <clipPath id="flag-clip"><rect width="300" height="200" rx="10"/></clipPath>
+                <g clip-path="url(#flag-clip)">
+                    <rect th:each="band : ${profile.bands}" x="0" width="300"
+                          th:attr="y=${band.y},height=${band.height},fill=${band.color}"/>
+                </g>
+                <rect x="1.5" y="1.5" width="297" height="197" rx="9" fill="none" stroke="#000000"
+                      stroke-opacity="0.25" stroke-width="3"/>
+                <circle cx="150" cy="100" r="42" fill="#ffffff" stroke="#000000" stroke-opacity="0.2" stroke-width="2"/>
+                <g transform="translate(122 72) scale(0.875)" fill="none" stroke-width="4.5"
+                   stroke-linecap="round" stroke-linejoin="round"
+                   th:attr="stroke=${profile.main().color}" th:utext="${profile.main().icon}"></g>
+            </svg>
+            <figcaption id="slogan" class="slogan" th:text="${profile.slogan}">Igualdad, libertad y tradición</figcaption>
+        </figure>
+
+        <h2 th:text="#{result.profile.title}">Tus rasgos más fuertes</h2>
+        <ol class="traits">
+            <li th:each="t : ${profile.top}" class="trait">
+                <span th:replace="~{fragments :: badge(${t.color}, ${t.icon})}"></span>
+                <div class="trait-body">
+                    <h3>
+                        <span th:text="${t.poleName}">Polo</span>
+                        <span class="trait-pct" th:text="${t.pct} + ' %'">80 %</span>
+                    </h3>
+                    <p class="trait-level" th:text="#{${'result.level.' + t.level}}">Inclinación marcada</p>
+                    <p th:text="${t.meaning}">Significado</p>
+                </div>
+            </li>
+        </ol>
+    </div>
+</section>
+
+<!-- Afinidad con partidos (datos del microservicio party-service). Solo se muestra si el servicio responde. -->
+<section th:fragment="affinity(affinity)" class="affinity" aria-labelledby="affinity-title">
+    <h2 id="affinity-title" th:text="#{affinity.title}">Afinidad con los partidos</h2>
+    <p th:text="#{affinity.intro}">Introducción</p>
+    <ol class="matches">
+        <li th:each="m : ${affinity.matches}" class="match">
+            <div class="match-head">
+                <span class="match-name" th:text="${m.name}">Partido</span>
+                <span class="match-pct" th:text="${m.affinity} + ' %'">80 %</span>
+            </div>
+            <div class="match-bar" role="img" th:attr="aria-label=${m.name + ' ' + m.affinity + '%'}">
+                <div class="match-fill" th:style="'width:' + ${m.affinity} + '%;background:' + ${m.color}"></div>
+            </div>
+            <details>
+                <summary th:text="#{affinity.details}">Ver comparación por eje</summary>
+                <ul class="gaps">
+                    <li th:each="g : ${m.gaps}" class="gap">
+                        <div class="gap-name" th:text="${g.axisName}">Eje</div>
+                        <div class="gap-poles">
+                            <span th:text="${g.leftLabel}">Izquierda</span>
+                            <span th:text="${g.rightLabel}">Derecha</span>
+                        </div>
+                        <div class="gap-track">
+                            <span class="marker marker-user" th:style="'left:' + ${g.user} + '%'"
+                                  th:attr="title=#{affinity.you} + ': ' + ${g.user} + ' %'"></span>
+                            <span class="marker marker-party" th:style="'left:' + ${g.party} + '%;background:' + ${m.color}"
+                                  th:attr="title=${m.name} + ': ' + ${g.party} + ' %'"></span>
+                        </div>
+                        <div class="gap-values">
+                            <span th:text="#{affinity.you} + ' ' + ${g.user} + ' %'">Tú 70 %</span>
+                            <span th:text="${m.name} + ' ' + ${g.party} + ' %'">Partido 60 %</span>
+                        </div>
+                    </li>
+                </ul>
+            </details>
+        </li>
+    </ol>
+    <p class="note" th:text="#{affinity.method}">Cómo se calcula</p>
+    <p class="note" th:text="#{affinity.disclaimer}">Aviso</p>
+</section>
+
+<!-- Gráfico de barras: una fila por eje. share.js lo usa también para generar la imagen. -->
+<section th:fragment="chart(bars)" id="chart" class="chart"
+         th:attr="data-title=#{result.title},data-filename=#{result.filename}">
+    <div th:each="b : ${bars}" class="axis-row" th:classappend="'axis-' + ${b.code}"
+         th:attr="data-left-label=${b.leftLabel},data-right-label=${b.rightLabel},data-left-pct=${b.leftPct},data-right-pct=${b.rightPct}">
+        <div class="axis-labels">
+            <span class="pole">
+                <span th:replace="~{fragments :: badge(${b.leftColor}, ${b.leftIcon})}"></span>
+                <span th:text="${b.leftLabel}">Polo izquierdo</span>
+            </span>
+            <span class="pole pole-right">
+                <span th:text="${b.rightLabel}">Polo derecho</span>
+                <span th:replace="~{fragments :: badge(${b.rightColor}, ${b.rightIcon})}"></span>
+            </span>
+        </div>
+        <div class="bar" role="img"
+             th:attr="aria-label=${b.leftLabel + ' ' + b.leftPct + '% / ' + b.rightLabel + ' ' + b.rightPct + '%'}">
+            <div class="seg seg-left" th:style="'width:' + ${b.leftPct} + '%'">
+                <span th:text="${b.leftPct} + '%'">50%</span>
+            </div>
+            <div class="seg seg-right" th:style="'width:' + ${b.rightPct} + '%'">
+                <span th:text="${b.rightPct} + '%'">50%</span>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>

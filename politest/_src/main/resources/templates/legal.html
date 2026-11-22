@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html th:lang="${lang}" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(#{legal.meta.title}, #{legal.meta.description}, 'index')}"></head>
+<body>
+<header th:replace="~{fragments :: header}"></header>
+<main class="container wide legal">
+    <h1 th:text="#{legal.title}">Información legal</h1>
+    <div th:replace="~{legal/__${lang}__ :: content}"></div>
+</main>
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

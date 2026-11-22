@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+  ESBORRANY: text orientatiu redactat a partir de com funciona avui l’aplicació.
+  L’ha de revisar un professional (advocat o DPD) abans de publicar el lloc.
+  Si canvia el funcionament (analítica, publicitat, registres d’IP, comptes...), cal actualitzar-lo.
+-->
+<div th:fragment="content">
+    <nav class="toc" aria-label="Índex">
+        <ul>
+            <li><a href="#aviso-legal">Avís legal</a></li>
+            <li><a href="#privacidad">Política de privacitat</a></li>
+            <li><a href="#cookies">Política de galetes</a></li>
+            <li><a href="#sobre-el-test">Sobre el test</a></li>
+        </ul>
+    </nav>
+
+    <section id="aviso-legal">
+        <h2>Avís legal</h2>
+            <a th:href="'mailto:' + ${contactEmail}" th:text="${contactEmail}">correu</a>.</p>
+        <h3>Objecte</h3>
+        <p>El lloc ofereix un test d’idees polítiques amb finalitats informatives, educatives i
+            d’entreteniment.</p>
+        <h3>Limitació de responsabilitat</h3>
+        <p>El resultat és orientatiu i no constitueix un diagnòstic, una avaluació científica ni un consell de cap
+            tipus. El titular no es fa responsable de l’ús que es faci dels resultats ni de les interpretacions que
+            tercers en facin si la persona decideix compartir-los.</p>
+        <h3>Propietat intel·lectual</h3>
+        <p>Els textos, el disseny i el codi d’aquest lloc pertanyen al seu titular o s’utilitzen amb la llicència
+            corresponent. No se’n permet la reproducció amb finalitats comercials sense autorització.</p>
+    </section>
+
+    <section id="privacidad">
+        <h2>Política de privacitat</h2>
+        <h3>Responsable del tractament</h3>
+            <a th:href="'mailto:' + ${contactEmail}" th:text="${contactEmail}">correu</a></p>
+
+        <h3>Quines dades es tracten i per a què</h3>
+        <ul>
+            <li><strong>Mentre fas el test.</strong> Les teves respostes es mantenen a la memòria del servidor,
+                associades a una galeta de sessió tècnica, només per mostrar-te la pregunta següent i calcular el
+                resultat. No es guarden en cap base de dades i es descarten quan la sessió caduca o tornes a
+                començar.</li>
+            <li><strong>Si prems «Crear un enllaç per compartir».</strong> Es guarda el percentatge obtingut en cada
+                eix, un identificador aleatori i la data de creació. No es guarda el teu nom, el teu correu ni la
+                teva adreça IP a la base de dades. Qualsevol persona que tingui l’enllaç podrà veure aquest
+                resultat.</li>
+            <li><strong>Imatge descarregable.</strong> Es genera al teu navegador i no s’envia al servidor.</li>
+            <li><strong>Registres tècnics.</strong> El proveïdor d’allotjament
+                (<span th:text="${hostingProvider}">proveïdor</span>) pot registrar adreces IP als registres del
+                servidor per motius de seguretat i funcionament. Aquesta informació no s’utilitza per identificar-te
+                ni es relaciona amb els resultats.</li>
+        </ul>
+
+        <h3>Base jurídica</h3>
+        <ul>
+            <li>Funcionament del test: execució del servei que sol·licites (art. 6.1.b RGPD).</li>
+            <li>Enllaç compartit: el teu consentiment en prémer el botó, informat en aquesta pàgina i a la pantalla
+                de resultats (art. 6.1.a RGPD i, com que fa referència a opinions polítiques, art. 9.2.a RGPD).
+                Pots retirar-lo en qualsevol moment demanant l’esborrament de l’enllaç.</li>
+        </ul>
+
+        <h3>Conservació</h3>
+        <p>Les respostes de sessió s’eliminen quan la sessió caduca (2 hores d’inactivitat com a màxim). Els enllaços
+            compartits es conserven fins que se’n sol·liciti l’eliminació.</p>
+
+        <h3>Destinataris</h3>
+        <p>No se cedeixen dades a tercers, tret del proveïdor d’allotjament com a encarregat del tractament.</p>
+
+        <h3>Els teus drets</h3>
+        <p>Pots sol·licitar l’accés, la rectificació, la supressió, la limitació o l’oposició al tractament i la
+            portabilitat escrivint a <a th:href="'mailto:' + ${contactEmail}" th:text="${contactEmail}">correu</a>.
+            Per eliminar un resultat compartit, indica al missatge l’adreça completa de l’enllaç. També pots
+            presentar una reclamació davant l’Agència Espanyola de Protecció de Dades
+            (<a href="https://www.aepd.es" rel="noopener">www.aepd.es</a>).</p>
+    </section>
+
+    <section id="cookies">
+        <h2>Política de galetes</h2>
+        <p>Aquest lloc utilitza únicament una galeta tècnica, necessària perquè el test funcioni. Per això no se
+            sol·licita consentiment.</p>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr><th>Nom</th><th>Finalitat</th><th>Tipus</th><th>Durada</th></tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td><code>JSESSIONID</code></td>
+                    <td>Recordar per quina pregunta vas i les teves respostes mentre fas el test.</td>
+                    <td>Pròpia, tècnica</td>
+                    <td>Sessió: s’elimina en tancar el navegador. Al servidor caduca després de 2 hores d’inactivitat.</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p>No fem servir galetes d’analítica ni de publicitat, ni carreguem recursos de tercers. L’idioma es decideix
+            per l’adreça de la pàgina, sense desar res al teu dispositiu. Si en el futur s’incorporessin altres
+            galetes, se’t demanarà el consentiment abans d’utilitzar-les.</p>
+    </section>
+
+    <section id="sobre-el-test">
+        <h2>Sobre el test</h2>
+        <p>Les afirmacions s’han redactat per ser tan neutrals com sigui possible, amb el mateix nombre
+            d’afirmacions en cada sentit a cada eix. Tot i això, qualsevol test simplifica la realitat: el resultat
+            depèn de la redacció de les preguntes i dels eixos escollits, no té validesa científica i cap posició
+            no és «la correcta». Fes-lo servir com a punt de partida per reflexionar, no com una etiqueta.</p>
+    </section>
+</div>
+</body>
+</html>
