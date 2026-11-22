@@ -1,0 +1,27 @@
+# Base de datos PROPIA del figure-service (un microservicio no comparte base de datos con los demás).
+# Contraseñas solo para desarrollo local.
+services:
+  figure-db:
+    image: mysql:8.4
+    container_name: figure-db
+    environment:
+      MYSQL_DATABASE: politest_figures
+      MYSQL_USER: figures
+      MYSQL_PASSWORD: figures
+      MYSQL_ROOT_PASSWORD: root
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "3308:3306"
+    volumes:
+      - figure-db-data:/var/lib/mysql
+  figure-phpmyadmin:
+    image: phpmyadmin:5
+    container_name: figure-phpmyadmin
+    environment:
+      PMA_HOST: figure-db
+    ports:
+      - "8084:80"
+    depends_on:
+      - figure-db
+volumes:
+  figure-db-data:
