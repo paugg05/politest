@@ -1,7 +1,5 @@
 package com.politest.figure.config;
 
-import com.politest.figure.application.port.in.CompareAffinityUseCase;
-import com.politest.figure.application.port.in.QueryFiguresUseCase;
 import com.politest.figure.application.port.out.FigureCatalog;
 import com.politest.figure.application.service.AffinityService;
 import org.springframework.context.annotation.Bean;
@@ -14,18 +12,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class ApplicationConfig {
 
+    /**
+     * A single bean: {@code AffinityService} implements both inbound ports, so Spring can resolve
+     * either interface to it. Declaring one bean per interface would create ambiguous candidates.
+     */
     @Bean
     AffinityService affinityService(FigureCatalog catalog) {
         return new AffinityService(catalog);
-    }
-
-    @Bean
-    CompareAffinityUseCase compareAffinityUseCase(AffinityService service) {
-        return service;
-    }
-
-    @Bean
-    QueryFiguresUseCase queryFiguresUseCase(AffinityService service) {
-        return service;
     }
 }
