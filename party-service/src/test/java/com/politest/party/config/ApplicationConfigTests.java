@@ -3,7 +3,7 @@ package com.politest.party.config;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.politest.party.application.port.in.CompareAffinityUseCase;
-import com.politest.party.application.port.in.QueryPartysUseCase;
+import com.politest.party.application.port.in.QueryPartiesUseCase;
 import com.politest.party.application.port.out.PartyCatalog;
 import com.politest.party.application.service.AffinityService;
 import com.politest.party.domain.model.DatasetInfo;
@@ -43,7 +43,7 @@ class ApplicationConfigTests {
 
             AffinityService service = context.getBean(AffinityService.class);
             assertSame(service, context.getBean(CompareAffinityUseCase.class));
-            assertSame(service, context.getBean(QueryPartysUseCase.class));
+            assertSame(service, context.getBean(QueryPartiesUseCase.class));
         }
     }
 }
