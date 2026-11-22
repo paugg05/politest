@@ -1,11 +1,13 @@
-package com.politest.party.party;
+package com.politest.party.domain.model;
 
 import java.util.List;
 import java.util.Set;
 
 /**
- * Códigos de los 8 ejes. Es parte del CONTRATO con la aplicación principal (que tiene su propio catálogo):
- * si algún día cambian los ejes, hay que cambiarlos en los dos lados.
+ * Codes of the eight ideological axes.
+ *
+ * <p>These codes are part of the contract with the main web application, which keeps its own catalogue.
+ * If the axes ever change, both sides must change.
  */
 public final class Axes {
 

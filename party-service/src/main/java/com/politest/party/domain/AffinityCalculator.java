@@ -1,11 +1,13 @@
-package com.politest.party.affinity;
+package com.politest.party.domain;
 
 import java.util.Map;
 
 /**
- * <p>Para cada eje se mide la distancia entre la posición de la persona y la del partido (0-100) y se
- * hace la media ponderada por los pesos de cada eje. La afinidad es 100 menos esa distancia media:
- * 100 % significa posiciones idénticas en todos los ejes comparados.
+ * Computes how close a person is to a party.
+ *
+ * <p>For every axis the distance between the person's position and the party's position (0 to 100) is measured,
+ * and the weighted mean of those distances is taken. Affinity is 100 minus that mean distance:
+ * 100 means identical positions on every compared axis.
  */
 public final class AffinityCalculator {
 
@@ -13,10 +15,10 @@ public final class AffinityCalculator {
     }
 
     /**
-     * @param user    porcentajes de la persona por eje (0-100)
-     * @param party   posiciones del partido por eje (0-100)
-     * @param weights importancia de cada eje (por defecto 1); puede ser nulo o incompleto
-     * @return afinidad de 0 a 100, o 0 si no hay ningún eje en común
+     * @param user    person's percentages by axis (0 to 100)
+     * @param party   party's positions by axis (0 to 100)
+     * @param weights importance of each axis (1 by default); may be null or incomplete
+     * @return affinity from 0 to 100, or 0 when there is no axis in common
      */
     public static double affinity(Map<String, Integer> user, Map<String, Integer> party,
                                   Map<String, Double> weights) {

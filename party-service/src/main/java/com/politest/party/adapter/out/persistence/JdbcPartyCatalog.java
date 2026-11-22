@@ -1,9 +1,11 @@
-package com.politest.party.party;
+package com.politest.party.adapter.out.persistence;
 
-import com.politest.party.party.PartyModels.DatasetInfo;
-import com.politest.party.party.PartyModels.Party;
-import com.politest.party.party.PartyModels.PartyWithPositions;
-import com.politest.party.party.PartyModels.Position;
+import com.politest.party.application.port.out.PartyCatalog;
+import com.politest.party.domain.model.Axes;
+import com.politest.party.domain.model.DatasetInfo;
+import com.politest.party.domain.model.Party;
+import com.politest.party.domain.model.PartyWithPositions;
+import com.politest.party.domain.model.Position;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,15 +15,17 @@ import java.util.stream.Collectors;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
+/** Outbound adapter: reads the party catalogue from MySQL with {@link JdbcClient}. */
 @Repository
-public class PartyRepository {
+class JdbcPartyCatalog implements PartyCatalog {
 
     private final JdbcClient jdbc;
 
-    public PartyRepository(JdbcClient jdbc) {
+    JdbcPartyCatalog(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
 
+    @Override
     public List<PartyWithPositions> findAllActive() {
         List<Party> parties = jdbc.sql("SELECT code, name, color FROM party WHERE active = 1 ORDER BY sort_order")
                 .query((rs, n) -> new Party(rs.getString("code"), rs.getString("name"), rs.getString("color")))
@@ -42,14 +46,18 @@ public class PartyRepository {
                         Collectors.mapping(Row::position, Collectors.toList())));
 
         return parties.stream()
-                .map(p -> new PartyWithPositions(p, sorted(byParty.getOrDefault(p.code(), List.of()))))
+                .map(party -> new PartyWithPositions(party, sorted(byParty.getOrDefault(party.code(), List.of()))))
                 .toList();
     }
 
+    @Override
     public Optional<PartyWithPositions> findByCode(String code) {
-        return findAllActive().stream().filter(p -> p.party().code().equalsIgnoreCase(code)).findFirst();
+        return findAllActive().stream()
+                .filter(party -> party.party().code().equalsIgnoreCase(code))
+                .findFirst();
     }
 
+    @Override
     public DatasetInfo datasetInfo() {
         return jdbc.sql("SELECT version, status, note, updated_on FROM dataset_info WHERE id = 1")
                 .query((rs, n) -> new DatasetInfo(rs.getString("version"), rs.getString("status"),
@@ -59,7 +67,7 @@ public class PartyRepository {
 
     private static List<Position> sorted(List<Position> positions) {
         return positions.stream()
-                .sorted(Comparator.comparingInt(p -> Axes.ORDER.indexOf(p.axis())))
+                .sorted(Comparator.comparingInt(position -> Axes.ORDER.indexOf(position.axis())))
                 .toList();
     }
 }

@@ -1,4 +1,4 @@
-package com.politest.party.affinity;
+package com.politest.party.domain;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -21,13 +21,13 @@ class AffinityCalculatorTests {
 
     @Test
     void usesMeanDistance() {
-        // distancias 10 y 30 -> media 20 -> afinidad 80
+        // distances 10 and 30 -> mean 20 -> affinity 80
         assertEquals(80.0, AffinityCalculator.affinity(Map.of("ECON", 70, "WELFARE", 50), PARTY, null), 1e-9);
     }
 
     @Test
     void weightsChangeTheResult() {
-        // ECON pesa 3 veces más: (3*10 + 1*30) / 4 = 15 -> 85
+        // ECON weighs three times as much: (3*10 + 1*30) / 4 = 15 -> 85
         assertEquals(85.0, AffinityCalculator.affinity(Map.of("ECON", 70, "WELFARE", 50), PARTY, Map.of("ECON", 3.0)), 1e-9);
     }
 
