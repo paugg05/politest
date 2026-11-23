@@ -1,13 +1,21 @@
-﻿target/
+# Build output
+target/
 build/
 *.class
 *.jar
 *.war
+
+# IDE files
 .idea/
 *.iml
 .vscode/
 .settings/
 .project
 .classpath
+
+# Local configuration and logs
 .env
 *.log
+
+# Archives
+*.zip
