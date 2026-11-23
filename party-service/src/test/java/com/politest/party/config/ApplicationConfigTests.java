@@ -7,7 +7,8 @@ import com.politest.party.application.port.in.QueryPartiesUseCase;
 import com.politest.party.application.port.out.PartyCatalog;
 import com.politest.party.application.service.AffinityService;
 import com.politest.party.domain.model.DatasetInfo;
-import com.politest.party.domain.model.PartyWithPositions;
+import com.politest.party.domain.model.Party;
+import com.politest.party.domain.model.PartyCode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -19,12 +20,12 @@ class ApplicationConfigTests {
 
     private static final PartyCatalog EMPTY_CATALOG = new PartyCatalog() {
         @Override
-        public List<PartyWithPositions> findAllActive() {
+        public List<Party> findAllActive() {
             return List.of();
         }
 
         @Override
-        public Optional<PartyWithPositions> findByCode(String code) {
+        public Optional<Party> findByCode(PartyCode code) {
             return Optional.empty();
         }
 

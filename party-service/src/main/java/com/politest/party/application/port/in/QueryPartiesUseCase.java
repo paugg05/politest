@@ -1,7 +1,7 @@
 package com.politest.party.application.port.in;
 
 import com.politest.party.domain.model.DatasetInfo;
-import com.politest.party.domain.model.PartyWithPositions;
+import com.politest.party.domain.model.Party;
 import java.util.List;
 import java.util.Optional;
 
@@ -10,8 +10,9 @@ public interface QueryPartiesUseCase {
 
     Catalog listParties();
 
-    Optional<PartyWithPositions> findParty(String code);
+    /** Finds a party by code, ignoring case. An invalid code simply finds nothing. */
+    Optional<Party> findParty(String code);
 
-    record Catalog(DatasetInfo dataset, List<PartyWithPositions> parties) {
+    record Catalog(DatasetInfo dataset, List<Party> parties) {
     }
 }

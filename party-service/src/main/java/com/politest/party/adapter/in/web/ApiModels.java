@@ -4,7 +4,6 @@ import com.politest.party.application.port.in.CompareAffinityUseCase;
 import com.politest.party.application.port.in.QueryPartiesUseCase;
 import com.politest.party.domain.model.DatasetInfo;
 import com.politest.party.domain.model.Party;
-import com.politest.party.domain.model.PartyWithPositions;
 import com.politest.party.domain.model.Position;
 import java.time.LocalDate;
 import java.util.List;
@@ -36,22 +35,22 @@ public final class ApiModels {
     public record PartyView(String code, String name, String color) {
 
         static PartyView from(Party party) {
-            return new PartyView(party.code(), party.name(), party.color());
+            return new PartyView(party.code().value(), party.name(), party.color());
         }
     }
 
     public record PositionView(String axis, int rightPct, int confidence, String note, String sourceUrl) {
 
         static PositionView from(Position position) {
-            return new PositionView(position.axis(), position.rightPct(), position.confidence(),
-                    position.note(), position.sourceUrl());
+            return new PositionView(position.axis().name(), position.rightPct().value(),
+                    position.confidence().level(), position.note(), position.sourceUrl());
         }
     }
 
     public record PartyWithPositionsView(PartyView party, List<PositionView> positions) {
 
-        static PartyWithPositionsView from(PartyWithPositions source) {
-            return new PartyWithPositionsView(PartyView.from(source.party()),
+        static PartyWithPositionsView from(Party source) {
+            return new PartyWithPositionsView(PartyView.from(source),
                     source.positions().stream().map(PositionView::from).toList());
         }
     }

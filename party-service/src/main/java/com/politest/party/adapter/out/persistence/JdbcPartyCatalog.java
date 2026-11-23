@@ -1,12 +1,13 @@
 package com.politest.party.adapter.out.persistence;
 
 import com.politest.party.application.port.out.PartyCatalog;
-import com.politest.party.domain.model.Axes;
+import com.politest.party.domain.model.AxisCode;
+import com.politest.party.domain.model.Confidence;
 import com.politest.party.domain.model.DatasetInfo;
 import com.politest.party.domain.model.Party;
-import com.politest.party.domain.model.PartyWithPositions;
+import com.politest.party.domain.model.PartyCode;
+import com.politest.party.domain.model.Percentage;
 import com.politest.party.domain.model.Position;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,34 +27,39 @@ class JdbcPartyCatalog implements PartyCatalog {
     }
 
     @Override
-    public List<PartyWithPositions> findAllActive() {
-        List<Party> parties = jdbc.sql("SELECT code, name, color FROM party WHERE active = 1 ORDER BY sort_order")
-                .query((rs, n) -> new Party(rs.getString("code"), rs.getString("name"), rs.getString("color")))
+    public List<Party> findAllActive() {
+        record PartyRow(String code, String name, String color) {
+        }
+        List<PartyRow> rows = jdbc.sql("SELECT code, name, color FROM party WHERE active = 1 ORDER BY sort_order")
+                .query((rs, n) -> new PartyRow(rs.getString("code"), rs.getString("name"), rs.getString("color")))
                 .list();
 
-        record Row(String partyCode, Position position) {
+        record PositionRow(String partyCode, Position position) {
         }
         Map<String, List<Position>> byParty = jdbc.sql("""
                         SELECT pp.party_code, pp.axis_code, pp.right_pct, pp.confidence, pp.note, pp.source_url
                         FROM party_position pp JOIN party p ON p.code = pp.party_code
                         WHERE p.active = 1
                         """)
-                .query((rs, n) -> new Row(rs.getString("party_code"),
-                        new Position(rs.getString("axis_code"), rs.getInt("right_pct"),
-                                rs.getInt("confidence"), rs.getString("note"), rs.getString("source_url"))))
+                .query((rs, n) -> new PositionRow(rs.getString("party_code"),
+                        new Position(AxisCode.of(rs.getString("axis_code")),
+                                Percentage.of(rs.getInt("right_pct")),
+                                Confidence.ofLevel(rs.getInt("confidence")),
+                                rs.getString("note"), rs.getString("source_url"))))
                 .list().stream()
-                .collect(Collectors.groupingBy(Row::partyCode, LinkedHashMap::new,
-                        Collectors.mapping(Row::position, Collectors.toList())));
+                .collect(Collectors.groupingBy(PositionRow::partyCode, LinkedHashMap::new,
+                        Collectors.mapping(PositionRow::position, Collectors.toList())));
 
-        return parties.stream()
-                .map(party -> new PartyWithPositions(party, sorted(byParty.getOrDefault(party.code(), List.of()))))
+        return rows.stream()
+                .map(row -> new Party(PartyCode.of(row.code()), row.name(), row.color(),
+                        byParty.getOrDefault(row.code(), List.of())))
                 .toList();
     }
 
     @Override
-    public Optional<PartyWithPositions> findByCode(String code) {
+    public Optional<Party> findByCode(PartyCode code) {
         return findAllActive().stream()
-                .filter(party -> party.party().code().equalsIgnoreCase(code))
+                .filter(party -> party.code().equals(code))
                 .findFirst();
     }
 
@@ -63,11 +69,5 @@ class JdbcPartyCatalog implements PartyCatalog {
                 .query((rs, n) -> new DatasetInfo(rs.getString("version"), rs.getString("status"),
                         rs.getString("note"), rs.getDate("updated_on").toLocalDate()))
                 .single();
-    }
-
-    private static List<Position> sorted(List<Position> positions) {
-        return positions.stream()
-                .sorted(Comparator.comparingInt(position -> Axes.ORDER.indexOf(position.axis())))
-                .toList();
     }
 }

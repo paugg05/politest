@@ -1,6 +1,6 @@
 package com.politest.party.application;
 
-import static com.politest.party.application.InMemoryPartyCatalog.party;
+import static com.politest.party.domain.TestParties.party;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,6 +9,7 @@ import com.politest.party.application.port.in.CompareAffinityUseCase.PartyMatch;
 import com.politest.party.application.port.in.CompareAffinityUseCase.Query;
 import com.politest.party.application.port.in.CompareAffinityUseCase.Result;
 import com.politest.party.application.service.AffinityService;
+import com.politest.party.domain.error.DomainValidationException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -30,12 +31,11 @@ class AffinityServiceTests {
     }
 
     @Test
-    void affinityIsRoundedToAnInteger() {
+    void identicalPositionsGiveFullAffinity() {
         Result result = service.compare(new Query(Map.of("ECON", 50, "WELFARE", 50), null));
 
-        PartyMatch centre = result.matches().get(0);
-        assertEquals("CENTRE", centre.code());
-        assertEquals(100, centre.affinity());
+        assertEquals("CENTRE", result.matches().get(0).code());
+        assertEquals(100, result.matches().get(0).affinity());
     }
 
     @Test
@@ -44,6 +44,7 @@ class AffinityServiceTests {
 
         assertEquals(1, result.matches().get(0).axes().size());
         assertEquals("ECON", result.matches().get(0).axes().get(0).axis());
+        assertEquals(40, result.matches().get(0).axes().get(0).user());
     }
 
     @Test
@@ -65,39 +66,41 @@ class AffinityServiceTests {
 
     @Test
     void rejectsMissingScores() {
-        assertThrows(InvalidAffinityRequestException.class, () -> service.compare(new Query(null, null)));
-        assertThrows(InvalidAffinityRequestException.class, () -> service.compare(new Query(Map.of(), null)));
-        assertThrows(InvalidAffinityRequestException.class, () -> service.compare(null));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(null, null)));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(Map.of(), null)));
+        assertThrows(DomainValidationException.class, () -> service.compare(null));
     }
 
     @Test
-    void rejectsUnknownAxes() {
-        InvalidAffinityRequestException e = assertThrows(InvalidAffinityRequestException.class,
+    void rejectsUnknownAxesWithAHelpfulMessage() {
+        DomainValidationException e = assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(Map.of("MAGIC", 10), null)));
         assertTrue(e.getMessage().contains("MAGIC"));
     }
 
     @Test
     void rejectsScoresOutOfRange() {
-        assertThrows(InvalidAffinityRequestException.class,
-                () -> service.compare(new Query(Map.of("ECON", 101), null)));
-        assertThrows(InvalidAffinityRequestException.class,
-                () -> service.compare(new Query(Map.of("ECON", -1), null)));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(Map.of("ECON", 101), null)));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(Map.of("ECON", -1), null)));
     }
 
     @Test
     void rejectsInvalidWeights() {
         Map<String, Integer> scores = Map.of("ECON", 50);
-        assertThrows(InvalidAffinityRequestException.class,
-                () -> service.compare(new Query(scores, Map.of("ECON", 11.0))));
-        assertThrows(InvalidAffinityRequestException.class,
-                () -> service.compare(new Query(scores, Map.of("MAGIC", 1.0))));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(scores, Map.of("ECON", 11.0))));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(scores, Map.of("MAGIC", 1.0))));
     }
 
     @Test
     void findsAPartyByCodeIgnoringCase() {
         assertTrue(service.findParty("centre").isPresent());
         assertTrue(service.findParty("NOPE").isEmpty());
+    }
+
+    @Test
+    void anInvalidCodeFindsNothingInsteadOfFailing() {
+        assertTrue(service.findParty("not a code!").isEmpty());
+        assertTrue(service.findParty(null).isEmpty());
     }
 
     @Test
