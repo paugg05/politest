@@ -4,7 +4,6 @@ import com.politest.figure.application.port.in.CompareAffinityUseCase;
 import com.politest.figure.application.port.in.QueryFiguresUseCase;
 import com.politest.figure.domain.model.DatasetInfo;
 import com.politest.figure.domain.model.Figure;
-import com.politest.figure.domain.model.FigureWithPositions;
 import com.politest.figure.domain.model.Position;
 import java.time.LocalDate;
 import java.util.List;
@@ -37,7 +36,7 @@ public final class ApiModels {
                              String color) {
 
         static FigureView from(Figure figure) {
-            return new FigureView(figure.code(), figure.name(), figure.description(), figure.birthYear(),
+            return new FigureView(figure.code().value(), figure.name(), figure.description(), figure.birthYear(),
                     figure.deathYear(), figure.color());
         }
     }
@@ -45,14 +44,15 @@ public final class ApiModels {
     public record PositionView(String axis, int rightPct, int confidence, String note) {
 
         static PositionView from(Position position) {
-            return new PositionView(position.axis(), position.rightPct(), position.confidence(), position.note());
+            return new PositionView(position.axis().name(), position.rightPct().value(),
+                    position.confidence().level(), position.note());
         }
     }
 
     public record FigureWithPositionsView(FigureView figure, List<PositionView> positions) {
 
-        static FigureWithPositionsView from(FigureWithPositions source) {
-            return new FigureWithPositionsView(FigureView.from(source.figure()),
+        static FigureWithPositionsView from(Figure source) {
+            return new FigureWithPositionsView(FigureView.from(source),
                     source.positions().stream().map(PositionView::from).toList());
         }
     }

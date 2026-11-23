@@ -7,7 +7,9 @@ import com.politest.figure.application.port.in.QueryFiguresUseCase;
 import com.politest.figure.application.port.out.FigureCatalog;
 import com.politest.figure.application.service.AffinityService;
 import com.politest.figure.domain.model.DatasetInfo;
-import com.politest.figure.domain.model.FigureWithPositions;
+import com.politest.figure.domain.model.Figure;
+import com.politest.figure.domain.model.FigureCode;
+import com.politest.figure.domain.model.Language;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -19,12 +21,12 @@ class ApplicationConfigTests {
 
     private static final FigureCatalog EMPTY_CATALOG = new FigureCatalog() {
         @Override
-        public List<FigureWithPositions> findAllActive(String lang) {
+        public List<Figure> findAllActive(Language language) {
             return List.of();
         }
 
         @Override
-        public Optional<FigureWithPositions> findByCode(String code, String lang) {
+        public Optional<Figure> findByCode(FigureCode code, Language language) {
             return Optional.empty();
         }
 

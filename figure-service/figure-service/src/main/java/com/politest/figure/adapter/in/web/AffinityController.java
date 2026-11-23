@@ -4,9 +4,9 @@ import com.politest.figure.adapter.in.web.ApiModels.AffinityRequest;
 import com.politest.figure.adapter.in.web.ApiModels.AffinityResponse;
 import com.politest.figure.adapter.in.web.ApiModels.FigureWithPositionsView;
 import com.politest.figure.adapter.in.web.ApiModels.FiguresResponse;
-import com.politest.figure.application.InvalidAffinityRequestException;
 import com.politest.figure.application.port.in.CompareAffinityUseCase;
 import com.politest.figure.application.port.in.QueryFiguresUseCase;
+import com.politest.figure.domain.error.DomainValidationException;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,8 +51,8 @@ class AffinityController {
         return AffinityResponse.from(compareAffinity.compare(request.toQuery(), lang));
     }
 
-    @ExceptionHandler(InvalidAffinityRequestException.class)
-    ResponseEntity<Map<String, String>> badRequest(InvalidAffinityRequestException e) {
+    @ExceptionHandler(DomainValidationException.class)
+    ResponseEntity<Map<String, String>> badRequest(DomainValidationException e) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
     }
 }

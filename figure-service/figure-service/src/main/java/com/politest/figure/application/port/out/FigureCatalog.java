@@ -1,17 +1,18 @@
 package com.politest.figure.application.port.out;
 
 import com.politest.figure.domain.model.DatasetInfo;
-import com.politest.figure.domain.model.FigureWithPositions;
+import com.politest.figure.domain.model.Figure;
+import com.politest.figure.domain.model.FigureCode;
+import com.politest.figure.domain.model.Language;
 import java.util.List;
 import java.util.Optional;
 
-/** Outbound port: where the application obtains figure data from. */
+/** Outbound port: where the application obtains figures from. Texts come in the requested language. */
 public interface FigureCatalog {
 
-    /** Active figures with texts in the given language ({@code es}, {@code ca} or {@code en}). */
-    List<FigureWithPositions> findAllActive(String lang);
+    List<Figure> findAllActive(Language language);
 
-    Optional<FigureWithPositions> findByCode(String code, String lang);
+    Optional<Figure> findByCode(FigureCode code, Language language);
 
     DatasetInfo datasetInfo();
 }

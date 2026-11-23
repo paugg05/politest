@@ -1,6 +1,6 @@
 package com.politest.figure.application;
 
-import static com.politest.figure.application.InMemoryFigureCatalog.figure;
+import static com.politest.figure.domain.TestFigures.figure;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,6 +9,7 @@ import com.politest.figure.application.port.in.CompareAffinityUseCase.FigureMatc
 import com.politest.figure.application.port.in.CompareAffinityUseCase.Query;
 import com.politest.figure.application.port.in.CompareAffinityUseCase.Result;
 import com.politest.figure.application.service.AffinityService;
+import com.politest.figure.domain.error.DomainValidationException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -64,39 +65,39 @@ class AffinityServiceTests {
 
     @Test
     void rejectsUnsupportedLanguages() {
-        InvalidAffinityRequestException e = assertThrows(InvalidAffinityRequestException.class,
+        DomainValidationException e = assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(Map.of("ECON", 50), null), "fr"));
         assertTrue(e.getMessage().contains("fr"));
     }
 
     @Test
     void rejectsMissingScores() {
-        assertThrows(InvalidAffinityRequestException.class, () -> service.compare(new Query(null, null), "es"));
-        assertThrows(InvalidAffinityRequestException.class, () -> service.compare(new Query(Map.of(), null), "es"));
-        assertThrows(InvalidAffinityRequestException.class, () -> service.compare(null, "es"));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(null, null), "es"));
+        assertThrows(DomainValidationException.class, () -> service.compare(new Query(Map.of(), null), "es"));
+        assertThrows(DomainValidationException.class, () -> service.compare(null, "es"));
     }
 
     @Test
     void rejectsUnknownAxes() {
-        InvalidAffinityRequestException e = assertThrows(InvalidAffinityRequestException.class,
+        DomainValidationException e = assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(Map.of("MAGIC", 10), null), "es"));
         assertTrue(e.getMessage().contains("MAGIC"));
     }
 
     @Test
     void rejectsScoresOutOfRange() {
-        assertThrows(InvalidAffinityRequestException.class,
+        assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(Map.of("ECON", 101), null), "es"));
-        assertThrows(InvalidAffinityRequestException.class,
+        assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(Map.of("ECON", -1), null), "es"));
     }
 
     @Test
     void rejectsInvalidWeights() {
         Map<String, Integer> scores = Map.of("ECON", 50);
-        assertThrows(InvalidAffinityRequestException.class,
+        assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(scores, Map.of("ECON", 11.0)), "es"));
-        assertThrows(InvalidAffinityRequestException.class,
+        assertThrows(DomainValidationException.class,
                 () -> service.compare(new Query(scores, Map.of("MAGIC", 1.0)), "es"));
     }
 
@@ -104,6 +105,18 @@ class AffinityServiceTests {
     void findsAFigureByCodeIgnoringCase() {
         assertTrue(service.findFigure("centre", "es").isPresent());
         assertTrue(service.findFigure("NOPE", "es").isEmpty());
+    }
+
+    @Test
+    void anInvalidCodeFindsNothingInsteadOfFailing() {
+        assertTrue(service.findFigure("not a code!", "es").isEmpty());
+        assertTrue(service.findFigure(null, "es").isEmpty());
+    }
+
+    @Test
+    void readingTheCatalogueAlsoRejectsUnsupportedLanguages() {
+        assertThrows(DomainValidationException.class, () -> service.listFigures("fr"));
+        assertThrows(DomainValidationException.class, () -> service.findFigure("CENTRE", "fr"));
     }
 
     @Test

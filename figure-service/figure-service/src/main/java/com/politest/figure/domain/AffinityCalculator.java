@@ -1,41 +1,41 @@
 package com.politest.figure.domain;
 
-import java.util.Map;
+import com.politest.figure.domain.model.Affinity;
+import com.politest.figure.domain.model.AxisCode;
+import com.politest.figure.domain.model.AxisScores;
+import com.politest.figure.domain.model.AxisWeights;
+import com.politest.figure.domain.model.Figure;
+import com.politest.figure.domain.model.Position;
 
 /**
- * Computes how close a person is to a historical figure.
+ * Domain service: computes how close a person is to a historical figure.
  *
  * <p>For every axis the distance between the person's position and the figure's position (0 to 100) is measured,
- * and the weighted mean of those distances is taken. Affinity is 100 minus that mean distance:
- * 100 means identical positions on every compared axis.
+ * and the weighted mean of those distances is taken. Affinity is 100 minus that mean distance.
+ * Axes on which the figure has no position (because they were not an issue in their time) are ignored;
+ * with no axis in common the affinity is 0.
  */
 public final class AffinityCalculator {
 
     private AffinityCalculator() {
     }
 
-    /**
-     * @param user    person's percentages by axis (0 to 100)
-     * @param figure  figure's positions by axis (0 to 100)
-     * @param weights importance of each axis (1 by default); may be null or incomplete
-     * @return affinity from 0 to 100, or 0 when there is no axis in common
-     */
-    public static double affinity(Map<String, Integer> user, Map<String, Integer> figure,
-                                  Map<String, Double> weights) {
+    public static Affinity affinity(AxisScores person, Figure figure, AxisWeights weights) {
         double weightedDistance = 0;
         double totalWeight = 0;
-        for (Map.Entry<String, Integer> entry : user.entrySet()) {
-            Integer figureValue = figure.get(entry.getKey());
-            if (figureValue == null) {
+        for (AxisCode axis : person.axes()) {
+            Position position = figure.positionOn(axis).orElse(null);
+            if (position == null) {
                 continue;
             }
-            double weight = weights == null ? 1.0 : weights.getOrDefault(entry.getKey(), 1.0);
-            weightedDistance += weight * Math.abs(entry.getValue() - figureValue);
+            double weight = weights.weightOf(axis);
+            int distance = person.on(axis).orElseThrow().distanceTo(position.rightPct());
+            weightedDistance += weight * distance;
             totalWeight += weight;
         }
         if (totalWeight == 0) {
-            return 0;
+            return new Affinity(0);
         }
-        return 100.0 - weightedDistance / totalWeight;
+        return new Affinity(100.0 - weightedDistance / totalWeight);
     }
 }

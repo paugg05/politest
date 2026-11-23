@@ -1,12 +1,14 @@
 package com.politest.figure.adapter.out.persistence;
 
 import com.politest.figure.application.port.out.FigureCatalog;
-import com.politest.figure.domain.model.Axes;
+import com.politest.figure.domain.model.AxisCode;
+import com.politest.figure.domain.model.Confidence;
 import com.politest.figure.domain.model.DatasetInfo;
 import com.politest.figure.domain.model.Figure;
-import com.politest.figure.domain.model.FigureWithPositions;
+import com.politest.figure.domain.model.FigureCode;
+import com.politest.figure.domain.model.Language;
+import com.politest.figure.domain.model.Percentage;
 import com.politest.figure.domain.model.Position;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,43 +28,47 @@ class JdbcFigureCatalog implements FigureCatalog {
     }
 
     @Override
-    public List<FigureWithPositions> findAllActive(String lang) {
-        List<Figure> figures = jdbc.sql("""
+    public List<Figure> findAllActive(Language language) {
+        record FigureRow(String code, String name, String description, int birthYear, int deathYear, String color) {
+        }
+        List<FigureRow> rows = jdbc.sql("""
                         SELECT f.code, t.name, t.description, f.birth_year, f.death_year, f.color
                         FROM figure f JOIN figure_text t ON t.figure_code = f.code AND t.lang = :lang
                         WHERE f.active = 1
                         ORDER BY f.sort_order
                         """)
-                .param("lang", lang)
-                .query((rs, n) -> new Figure(rs.getString("code"), rs.getString("name"),
+                .param("lang", language.code())
+                .query((rs, n) -> new FigureRow(rs.getString("code"), rs.getString("name"),
                         rs.getString("description"), rs.getInt("birth_year"), rs.getInt("death_year"),
                         rs.getString("color")))
                 .list();
 
-        record Row(String figureCode, Position position) {
+        record PositionRow(String figureCode, Position position) {
         }
         Map<String, List<Position>> byFigure = jdbc.sql("""
                         SELECT fp.figure_code, fp.axis_code, fp.right_pct, fp.confidence, fp.note
                         FROM figure_position fp JOIN figure f ON f.code = fp.figure_code
                         WHERE f.active = 1
                         """)
-                .query((rs, n) -> new Row(rs.getString("figure_code"),
-                        new Position(rs.getString("axis_code"), rs.getInt("right_pct"),
-                                rs.getInt("confidence"), rs.getString("note"))))
+                .query((rs, n) -> new PositionRow(rs.getString("figure_code"),
+                        new Position(AxisCode.of(rs.getString("axis_code")),
+                                Percentage.of(rs.getInt("right_pct")),
+                                Confidence.ofLevel(rs.getInt("confidence")),
+                                rs.getString("note"))))
                 .list().stream()
-                .collect(Collectors.groupingBy(Row::figureCode, LinkedHashMap::new,
-                        Collectors.mapping(Row::position, Collectors.toList())));
+                .collect(Collectors.groupingBy(PositionRow::figureCode, LinkedHashMap::new,
+                        Collectors.mapping(PositionRow::position, Collectors.toList())));
 
-        return figures.stream()
-                .map(figure -> new FigureWithPositions(figure,
-                        sorted(byFigure.getOrDefault(figure.code(), List.of()))))
+        return rows.stream()
+                .map(row -> new Figure(FigureCode.of(row.code()), row.name(), row.description(), row.birthYear(),
+                        row.deathYear(), row.color(), byFigure.getOrDefault(row.code(), List.of())))
                 .toList();
     }
 
     @Override
-    public Optional<FigureWithPositions> findByCode(String code, String lang) {
-        return findAllActive(lang).stream()
-                .filter(figure -> figure.figure().code().equalsIgnoreCase(code))
+    public Optional<Figure> findByCode(FigureCode code, Language language) {
+        return findAllActive(language).stream()
+                .filter(figure -> figure.code().equals(code))
                 .findFirst();
     }
 
@@ -72,11 +78,5 @@ class JdbcFigureCatalog implements FigureCatalog {
                 .query((rs, n) -> new DatasetInfo(rs.getString("version"), rs.getString("status"),
                         rs.getString("note"), rs.getDate("updated_on").toLocalDate()))
                 .single();
-    }
-
-    private static List<Position> sorted(List<Position> positions) {
-        return positions.stream()
-                .sorted(Comparator.comparingInt(position -> Axes.ORDER.indexOf(position.axis())))
-                .toList();
     }
 }

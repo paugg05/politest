@@ -14,8 +14,9 @@ does not depend on Spring, JDBC or HTTP; technology is plugged in from the outsi
 ```
 com.politest.figure
 ├── domain                 Business rules, no framework dependencies
-│   ├── model              Figure, Position, FigureWithPositions, DatasetInfo, Axes
-│   └── AffinityCalculator
+│   ├── model              Figure (aggregate), Position and the value objects
+│   ├── error              DomainValidationException
+│   └── AffinityCalculator  (domain service)
 ├── application            Use cases
 │   ├── port.in            CompareAffinityUseCase, QueryFiguresUseCase
 │   ├── port.out           FigureCatalog
@@ -44,7 +45,39 @@ and without a database.
 ## Languages
 
 Names and descriptions are stored per language (`es`, `ca`, `en`). Endpoints accept an optional `lang` query parameter
-(default `es`). The affinity endpoint rejects unsupported languages with `400`.
+(default `es`). Every endpoint rejects unsupported languages with `400`.
+
+## Domain model (DDD)
+
+The domain is modelled with the vocabulary of the problem. Invalid states cannot be represented: every object validates
+itself when it is created.
+
+| Concept | Kind | Rules it enforces |
+|---|---|---|
+| `Figure` | Aggregate root | Code and name required; birth not after death; at most one position per axis; positions always in axis order and immutable from outside |
+| `Position` | Entity-like value | Axis, percentage and confidence are mandatory |
+| `AxisCode` | Value object (enum) | Exactly the eight axes; anything else is rejected |
+| `Percentage` | Value object | 0 to 100, immutable; knows the distance to another percentage |
+| `Confidence` | Value object (enum) | Weak, partial or solid (levels 1 to 3) |
+| `FigureCode` | Value object | Upper-case letters, digits and underscores |
+| `Language` | Value object (enum) | `es`, `ca` or `en` |
+| `AxisScores`, `AxisWeights` | Value objects | A person's answers and the importance of each axis, validated on creation |
+| `Affinity` | Value object | A result between 0 and 100 |
+| `AffinityCalculator` | Domain service | The calculation, with no state and no framework |
+
+Ubiquitous language: *figure*, *position*, *axis*, *percentage*, *confidence*, *affinity*, *dataset*, *language*. These names
+are used in the code, the tests and the API.
+
+The REST layer works with plain numbers and strings; they are converted into domain objects at the edge of the use case,
+and any violation surfaces as a `DomainValidationException`, which the web adapter turns into a `400` response.
+
+### Bounded context
+
+This service owns everything about historical figures and how close a person is to them. It does not know about parties,
+quizzes or users. The only thing shared with the other services is the contract of the eight axis codes and the 0 to 100
+scale, which is deliberately duplicated rather than shared as a library, so each service can be deployed on its own.
+`party-service` models a similar concept (positions and affinity) with a different aggregate: that is the point of having
+separate contexts.
 
 ## How affinity is computed
 
@@ -88,6 +121,8 @@ mvn verify
 | Test | Purpose |
 |---|---|
 | `AffinityCalculatorTests` | Domain calculation |
+| `ValueObjectTests`, `AxisScoresAndWeightsTests`, `FigureTests` | Invariants of value objects and of the aggregate |
 | `AffinityServiceTests` | Use cases against an in-memory catalogue |
+| `ApplicationConfigTests` | Wiring of the composition root |
 | `ArchitectureTests` | Hexagonal dependency rules (ArchUnit) |
 | `SeedDataTests` | Consistency of the seed migration |
