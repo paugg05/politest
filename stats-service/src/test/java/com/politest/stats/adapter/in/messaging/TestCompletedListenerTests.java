@@ -50,12 +50,17 @@ class TestCompletedListenerTests {
 
     @Test
     void malformedJsonFailsSoTheErrorHandlerCanAct() {
-        assertThrows(RuntimeException.class, () -> listener.onMessage("{not json"));
+        assertThrows(MalformedEventException.class, () -> listener.onMessage("{not json"));
         assertTrue(received.isEmpty());
     }
 
     @Test
     void topicNameMatchesTheProducerContract() {
         assertEquals("test.completed", TestCompletedMessage.TOPIC);
+    }
+
+    @Test
+    void deadLetterTopicIsDerivedFromTheMainTopic() {
+        assertEquals("test.completed.DLT", MessagingConfig.DEAD_LETTER_TOPIC);
     }
 }

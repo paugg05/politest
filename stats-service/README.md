@@ -61,7 +61,29 @@ mvn spring-boot:run       # http://localhost:8092
 
 The consumer group is `stats-service` and starts from the earliest offset, so events published while the service was down are processed when it starts.
 
-## Failure handling today, and what is next
+## Failure handling
 
-- A record that cannot be processed (for example malformed JSON) is retried by Spring Kafka's default error handler and then skipped with a log line. It is not lost silently, but it is not kept either.
-- Planned: back-off between retries, a dead-letter topic for records that keep failing, and integration tests against a real Kafka and MySQL with Testcontainers.
+Spring Kafka's `DefaultErrorHandler` is configured in `MessagingConfig`:
+
+| Kind of failure | Example | What happens |
+|---|---|---|
+| Transient | Database briefly unavailable | Retried three times with exponential back-off (0.5 s, 1 s, 2 s) |
+| Permanent | Unreadable JSON, unknown language, position above 100 | No retries: trying again would give the same result |
+| Retries exhausted, or permanent | Any of the above | The record is published to the dead-letter topic `test.completed.DLT` with the error in its headers, and the consumer moves on |
+
+A bad record therefore never blocks its partition and is never lost silently: it stays in `test.completed.DLT` to be inspected, fixed and replayed. The dead-letter topic has the same number of partitions as the source topic because the recoverer keeps the original partition.
+
+## Tests
+
+| Test | What it checks | Needs |
+|---|---|---|
+| Domain, application, listener and wiring tests | Business rules, idempotency, JSON mapping, bean resolution | Nothing |
+| `ArchitectureTests` | Dependency rules between layers | Nothing |
+| `StatsPipelineTests` | The real flow: Kafka to MySQL, redelivery counted once, bad records in the dead-letter topic | Docker |
+
+`StatsPipelineTests` starts Kafka and MySQL with [Testcontainers](https://testcontainers.com/), so it exercises the real serialisation, the real error handler and the real SQL instead of mocks. Without Docker the class is skipped. In Jenkins the Docker socket is mounted in the build container so it runs there too.
+
+## What is next
+
+- Transactional outbox in the web application, so that an event is never lost when Kafka is unavailable.
+- A replay tool or endpoint for the dead-letter topic.

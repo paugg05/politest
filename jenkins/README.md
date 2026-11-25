@@ -100,7 +100,8 @@ docker compose down -v     # also deletes the Jenkins data volume
 This setup targets local development and demonstration.
 
 - The container runs as `root` and has access to the host Docker socket, which is equivalent to root access on the host.
-  Do not expose this instance to the internet.
+- The build container also mounts the Docker socket, so that Testcontainers can start Kafka and MySQL for the integration tests of `stats-service`. Any code that runs in the build can therefore control the host's Docker. This is acceptable for a local, single-user setup and should be replaced by rootless or remote Docker in a shared environment.
+- Do not expose this instance to the internet.
 - No secrets are stored in the repository. For credentials, use the Jenkins credential store and `withCredentials`.
 
 ## Possible improvements

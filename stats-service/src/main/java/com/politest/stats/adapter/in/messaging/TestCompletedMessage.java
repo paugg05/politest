@@ -15,8 +15,13 @@ record TestCompletedMessage(String eventId, String occurredAt, String language, 
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
+    /** Parses the payload; anything unreadable is reported as a {@link MalformedEventException}. */
     static TestCompletedMessage fromJson(String payload) {
-        return JSON.readValue(payload, TestCompletedMessage.class);
+        try {
+            return JSON.readValue(payload, TestCompletedMessage.class);
+        } catch (RuntimeException e) {
+            throw new MalformedEventException("Unreadable " + TOPIC + " payload", e);
+        }
     }
 
     RegisterCompletedTestUseCase.Command toCommand() {

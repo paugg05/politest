@@ -96,7 +96,7 @@ Published by the web application when a person sees their result for the first t
 }
 ```
 
-The topic has three partitions and the record key is the event id. Delivery is at-least-once, so consumers must tolerate duplicates; `stats-service` does by using the event id as primary key. Producer and consumer each keep their own copy of the schema, and the consumer ignores unknown fields so the producer can add fields without a coordinated release.
+The topic has three partitions and the record key is the event id. Delivery is at-least-once, so consumers must tolerate duplicates; `stats-service` does by using the event id as primary key. Records that cannot be processed are retried when the failure may be transient and then moved to the dead-letter topic `test.completed.DLT`. Producer and consumer each keep their own copy of the schema, and the consumer ignores unknown fields so the producer can add fields without a coordinated release.
 
 ## Architecture
 
@@ -171,7 +171,7 @@ The credentials in the compose files are development defaults for local use only
 mvn verify        # inside any of the three modules
 ```
 
-The suite covers domain rules, application services against in-memory ports, seed data consistency, the Spring wiring and the architecture rules.
+The suite covers domain rules, application services against in-memory ports, seed data consistency, the Spring wiring and the architecture rules. `stats-service` also has an end-to-end test that starts a real Kafka broker and a real MySQL database with Testcontainers; it needs Docker and is skipped without it.
 
 A [`Jenkinsfile`](Jenkinsfile) at the repository root builds and tests the four modules in parallel inside a Maven container, archives the jars and publishes the JUnit reports. The Jenkins setup itself runs in Docker and is documented in [`jenkins/README.md`](jenkins/README.md).
 
@@ -180,5 +180,5 @@ A [`Jenkinsfile`](Jenkinsfile) at the repository root builds and tests the four 
 
 ## Roadmap
 
-- Reliability patterns for messaging: retries with back-off, dead-letter topic, transactional outbox on the producer
-- Integration tests with Testcontainers (real Kafka and MySQL)
+- Transactional outbox on the producer, so events survive a Kafka outage
+- Replaying records from the dead-letter topic
