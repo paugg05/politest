@@ -21,6 +21,7 @@ class QuizProgress implements Serializable {
     private final Map<Long, Integer> answers = new HashMap<>();
     private int index = 0;
     private String sharedResultId;
+    private boolean completionPublished;
 
     QuizProgress(List<Long> order) {
         this.order = new ArrayList<>(order);
@@ -78,5 +79,14 @@ class QuizProgress implements Serializable {
 
     void sharedResultId(String id) {
         this.sharedResultId = id;
+    }
+
+    /** Whether the "test completed" event was already published for this test (it must happen once). */
+    boolean completionPublished() {
+        return completionPublished;
+    }
+
+    void completionPublished(boolean published) {
+        this.completionPublished = published;
     }
 }

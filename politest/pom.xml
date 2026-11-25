@@ -55,6 +55,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Mensajería: publica eventos en Kafka -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-kafka</artifactId>
+		</dependency>
+
 		<!-- Monolito modular -->
 		<dependency>
 			<groupId>org.springframework.modulith</groupId>

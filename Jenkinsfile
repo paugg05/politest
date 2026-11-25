@@ -34,6 +34,13 @@ pipeline {
                         }
                     }
                 }
+                stage('stats-service') {
+                    steps {
+                        dir('stats-service') {
+                            sh 'mvn -B -ntp verify'
+                        }
+                    }
+                }
             }
         }
 

@@ -2,6 +2,7 @@ package com.politest.politest.quiz;
 
 import com.politest.politest.affinity.AffinityService;
 import com.politest.politest.catalog.CatalogService;
+import com.politest.politest.events.TestEvents;
 import com.politest.politest.figures.FigureService;
 import com.politest.politest.catalog.CatalogService.QuestionView;
 import com.politest.politest.result.ResultService;
@@ -31,14 +32,16 @@ class QuizController {
     private final ResultService results;
     private final AffinityService affinity;
     private final FigureService figures;
+    private final TestEvents events;
 
     QuizController(CatalogService catalog, ScoringService scoring, ResultService results, AffinityService affinity,
-                   FigureService figures) {
+                   FigureService figures, TestEvents events) {
         this.catalog = catalog;
         this.scoring = scoring;
         this.results = results;
         this.affinity = affinity;
         this.figures = figures;
+        this.events = events;
     }
 
     @GetMapping
@@ -100,6 +103,11 @@ class QuizController {
             return redirect(lang, "question");
         }
         Map<String, Integer> scores = scoring.rightPercentages(progress.answers());
+        // Evento "test completado" para las estadísticas: una sola vez por test, aunque se recargue la página.
+        if (!progress.completionPublished()) {
+            events.testCompleted(scores, lang);
+            progress.completionPublished(true);
+        }
         model.addAttribute("bars", results.bars(scores, lang));
         model.addAttribute("profile", results.profile(scores, lang));
         // Llama al microservicio party-service; si no está disponible, no hay sección de afinidad.
