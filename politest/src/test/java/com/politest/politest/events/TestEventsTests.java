@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.politest.politest.events.internal.TestCompletedEvent;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
@@ -37,6 +39,18 @@ class TestEventsTests {
         assertEquals(event.eventId(), key.getValue());
         assertEquals("es", event.language());
         assertEquals(Map.of("ECON", 70), event.rightPct());
+    }
+
+    @Test
+    void theTimestampIsTruncatedToTheDay() {
+        when(kafka.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
+
+        events.testCompleted(Map.of("ECON", 70), "es");
+
+        ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
+        verify(kafka).send(anyString(), anyString(), value.capture());
+        Instant occurredAt = Instant.parse(TestCompletedEvent.fromJson(value.getValue()).occurredAt());
+        assertEquals(occurredAt.truncatedTo(ChronoUnit.DAYS), occurredAt);
     }
 
     @Test

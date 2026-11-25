@@ -2,6 +2,7 @@ package com.politest.politest.events;
 
 import com.politest.politest.events.internal.TestCompletedEvent;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -28,10 +29,14 @@ public class TestEvents {
         this.kafka = kafka;
     }
 
-    /** Announces that a questionnaire was finished. The event id is also the record key. */
+    /**
+     * Announces that a questionnaire was finished. The event id is also the record key.
+     * The timestamp is truncated to the day: statistics do not need more, and a precise time
+     * could be matched against server logs to single out one person.
+     */
     public void testCompleted(Map<String, Integer> rightPct, String language) {
         try {
-            TestCompletedEvent event = TestCompletedEvent.of(UUID.randomUUID(), Instant.now(), language, rightPct);
+            TestCompletedEvent event = TestCompletedEvent.of(UUID.randomUUID(), Instant.now().truncatedTo(ChronoUnit.DAYS), language, rightPct);
             kafka.send(TEST_COMPLETED_TOPIC, event.eventId(), event.toJson())
                     .whenComplete((result, error) -> {
                         if (error != null) {

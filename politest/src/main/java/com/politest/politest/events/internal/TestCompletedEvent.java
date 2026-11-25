@@ -12,7 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
  * <p>It carries no personal data: no user, session, IP address or free text.
  *
  * @param eventId    unique id (UUID); consumers use it to process each event once
- * @param occurredAt ISO-8601 instant in UTC
+ * @param occurredAt ISO-8601 instant in UTC; the producer truncates it to the day on purpose
  * @param language   interface language the test was taken in (es, ca, en)
  * @param rightPct   axis code to position, 0 (left pole) to 100 (right pole)
  */

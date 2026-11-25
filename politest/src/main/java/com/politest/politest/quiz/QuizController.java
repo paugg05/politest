@@ -95,7 +95,7 @@ class QuizController {
         return redirect(lang, "question");
     }
 
-    /** Resultado: gráfico de barras calculado con las respuestas de la sesión (no se guarda nada). */
+    /** Resultado: gráfico calculado con las respuestas de la sesión. Solo se publica un evento estadístico anónimo. */
     @GetMapping("/finish")
     String finish(@PathVariable String lang, HttpSession session, Model model) {
         QuizProgress progress = progress(session);

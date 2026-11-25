@@ -85,12 +85,12 @@ For the axes shared by the user and the target, affinity is `100 − weighted me
 
 ### Event contract: `test.completed`
 
-Published by the web application when a person sees their result for the first time. It carries no personal data.
+Published by the web application when a person sees their result for the first time. It carries no personal data, and the timestamp is truncated to the day so it cannot be matched against server logs.
 
 ```json
 {
   "eventId": "3f2b8c1e-5d4a-4c3b-9a7e-1b2c3d4e5f60",
-  "occurredAt": "2026-11-25T14:30:00Z",
+  "occurredAt": "2026-11-25T00:00:00Z",
   "language": "ca",
   "rightPct": { "ECON": 70, "LIBERTY": 20 }
 }
