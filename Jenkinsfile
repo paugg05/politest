@@ -2,8 +2,7 @@ pipeline {
     agent {
         docker {
             image 'maven:3.9-eclipse-temurin-25'
-            args '-u root -v maven-repo:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock'
-        }
+			args '-u root -v maven-repo:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock --add-host=host.docker.internal:host-gateway -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal'        }
     }
 
     options {
