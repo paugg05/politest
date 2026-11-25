@@ -2,7 +2,8 @@ pipeline {
     agent {
         docker {
             image 'maven:3.9-eclipse-temurin-25'
-			args '-u root -v maven-repo:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock --add-host=host.docker.internal:host-gateway -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal'        }
+            args '-u root -v maven-repo:/root/.m2 -v /var/run/docker.sock:/var/run/docker.sock --add-host=host.docker.internal:host-gateway -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal'
+        }
     }
 
     options {
@@ -40,6 +41,19 @@ pipeline {
                         }
                     }
                 }
+            }
+        }
+
+        stage('Check for skipped tests') {
+            steps {
+                // A skipped test passes silently. Docker-based tests are skipped when Docker is unreachable,
+                // so a skip is treated as a failure rather than as a green build.
+                sh '''
+                    if grep -rEl --include='TEST-*.xml' 'skipped="[1-9]' . ; then
+                        echo "Some tests were skipped; failing the build."
+                        exit 1
+                    fi
+                '''
             }
         }
 
