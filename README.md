@@ -186,8 +186,7 @@ The suite covers domain rules, application services against in-memory ports, see
 
 A [`Jenkinsfile`](Jenkinsfile) at the repository root builds and tests the four modules in parallel inside a Maven container, archives the jars and publishes the JUnit reports. The Jenkins setup itself runs in Docker and is documented in [`jenkins/README.md`](jenkins/README.md).
 
-<!-- Replace with a screenshot of a green pipeline run: -->
-<!-- ![Jenkins pipeline](docs/jenkins-pipeline.png) -->
+![Jenkins pipeline](docs/jenkins-pipeline.png)
 
 ## Roadmap
 
