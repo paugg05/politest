@@ -13,13 +13,6 @@ pipeline {
     stages {
         stage('Build and test') {
             parallel {
-                stage('web') {
-                    steps {
-                        dir('politest') {
-                            sh 'mvn -B -ntp verify'
-                        }
-                    }
-                }
                 stage('party-service') {
                     steps {
                         dir('party-service') {
@@ -34,10 +27,23 @@ pipeline {
                         }
                     }
                 }
-                stage('stats-service') {
-                    steps {
-                        dir('stats-service') {
-                            sh 'mvn -B -ntp verify'
+                // These two modules start Kafka and MySQL containers in their tests. Running them one after
+                // the other keeps only one broker and one database alive at a time, which is much lighter.
+                stage('Modules with Docker tests') {
+                    stages {
+                        stage('web') {
+                            steps {
+                                dir('politest') {
+                                    sh 'mvn -B -ntp verify'
+                                }
+                            }
+                        }
+                        stage('stats-service') {
+                            steps {
+                                dir('stats-service') {
+                                    sh 'mvn -B -ntp verify'
+                                }
+                            }
                         }
                     }
                 }

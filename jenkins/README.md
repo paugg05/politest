@@ -27,7 +27,7 @@ flowchart LR
 1. Jenkins checks out the repository from GitHub.
 2. It starts a throwaway build container from the Maven/JDK 25 image, using the Docker daemon of the host
    through the mounted socket. Nothing besides Docker has to be installed for building.
-3. The three modules are built and tested in parallel with `mvn -B -ntp verify`.
+3. The four modules are built and tested with `mvn -B -ntp verify`, in parallel where it is safe.
 4. The generated jars are archived and the JUnit reports are published.
 5. The build container is removed.
 
@@ -36,7 +36,8 @@ flowchart LR
 | Stage | Description |
 |---|---|
 | Checkout SCM | Fetches the commit that triggered the build. |
-| Build and test | Runs `mvn verify` for `politest`, `party-service` and `figure-service` in parallel. Includes unit tests, the architecture and modularity tests and the packaging of the Spring Boot jars. |
+| Build and test | Runs `mvn verify` for the four modules. `party-service` and `figure-service` run in parallel with a branch that runs `politest` and `stats-service` one after the other, because their tests start Kafka and MySQL containers with Testcontainers and only one broker and one database should be alive at a time. Includes unit tests, architecture and modularity tests, integration tests and the packaging of the Spring Boot jars. |
+| Check for skipped tests | Fails the build if any test was skipped, so that tests that need Docker cannot pass silently when Docker is unreachable. |
 | Archive artifacts | Stores `**/target/*.jar` as build artifacts. |
 | Post actions | Publishes the Surefire test reports (`**/target/surefire-reports/*.xml`). |
 

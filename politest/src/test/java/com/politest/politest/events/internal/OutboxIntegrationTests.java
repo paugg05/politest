@@ -11,6 +11,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.admin.Admin;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -19,6 +23,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -32,6 +37,9 @@ import org.testcontainers.mysql.MySQLContainer;
 /**
  * The outbox against a real MySQL (with the real Flyway migrations) and a real Kafka broker, both started by
  * Testcontainers. It needs Docker; without it the class is skipped.
+ *
+ * <p>The broker is a fresh container on a possibly busy machine, so the "healthy" producer gets generous
+ * timeouts and the topic is created and warmed up beforehand. Only the "broker down" producer uses short ones.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class OutboxIntegrationTests {
@@ -49,17 +57,30 @@ class OutboxIntegrationTests {
 
     private static JdbcClient jdbc;
     private static JdbcOutboxStore store;
+    private static KafkaTemplate<String, String> healthyKafka;
 
     @BeforeAll
-    static void migrateDatabase() {
+    static void prepareInfrastructure() throws Exception {
         Flyway.configure()
                 .dataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword())
                 .load()
                 .migrate();
-        DriverManagerDataSource dataSource =
-                new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword());
-        jdbc = JdbcClient.create(dataSource);
+        jdbc = JdbcClient.create(
+                new DriverManagerDataSource(MYSQL.getJdbcUrl(), MYSQL.getUsername(), MYSQL.getPassword()));
         store = new JdbcOutboxStore(jdbc);
+
+        try (Admin admin = Admin.create(Map.<String, Object>of(
+                AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers()))) {
+            admin.createTopics(List.of(new NewTopic(TestEvents.TEST_COMPLETED_TOPIC, 1, (short) 1)))
+                    .all().get(30, TimeUnit.SECONDS);
+        }
+        healthyKafka = template(KAFKA.getBootstrapServers(), 15_000, 10_000, 20_000);
+        healthyKafka.send(TestEvents.TEST_COMPLETED_TOPIC, "warm-up", "{}").get(30, TimeUnit.SECONDS);
+    }
+
+    @BeforeEach
+    void emptyTheOutbox() {
+        jdbc.sql("DELETE FROM outbox_event").update();
     }
 
     @Test
@@ -69,9 +90,9 @@ class OutboxIntegrationTests {
         assertEquals(1, pending.size());
         OutboxRecord stored = pending.get(0);
 
-        relayTo(KAFKA.getBootstrapServers()).publishPending();
+        new OutboxRelay(store, healthyKafka).publishPending();
 
-        assertEquals(0, store.pending(10).size());
+        assertEquals(0, store.pending(10).size(), "the event was not marked as published");
         ConsumerRecord<String, String> received = readFromTopic(stored.key());
         assertNotNull(received, "the event never reached Kafka");
         assertEquals(stored.payload(), received.value());
@@ -84,38 +105,38 @@ class OutboxIntegrationTests {
         OutboxRecord stored = store.pending(10).get(0);
 
         // Nothing listens on port 1: the broker is unreachable, the event must stay in the outbox.
-        relayTo("localhost:1").publishPending();
+        new OutboxRelay(store, template("localhost:1", 1_000, 1_000, 2_000)).publishPending();
         assertEquals(1, store.pending(10).size());
 
         // The broker comes back: the same event is delivered.
-        relayTo(KAFKA.getBootstrapServers()).publishPending();
-        assertEquals(0, store.pending(10).size());
+        new OutboxRelay(store, healthyKafka).publishPending();
+        assertEquals(0, store.pending(10).size(), "the event was not published once Kafka was back");
         assertNotNull(readFromTopic(stored.key()), "the event was lost");
     }
 
     @Test
     void publishedEventsArePurgedAfterTheRetentionPeriod() {
         new TestEvents(store).testCompleted(Map.of("ECON", 55), "en");
-        relayTo(KAFKA.getBootstrapServers()).publishPending();
-        long before = jdbc.sql("SELECT COUNT(*) FROM outbox_event").query(Long.class).single();
+        new OutboxRelay(store, healthyKafka).publishPending();
+        assertEquals(0, store.pending(10).size(), "the event was not published");
 
         int removed = store.deletePublishedBefore(Instant.now().plusSeconds(60));
 
-        long after = jdbc.sql("SELECT COUNT(*) FROM outbox_event").query(Long.class).single();
-        assertTrue(removed >= 1);
-        assertEquals(before - removed, after);
+        assertTrue(removed >= 1, "no published event was purged");
+        long left = jdbc.sql("SELECT COUNT(*) FROM outbox_event").query(Long.class).single();
+        assertEquals(0L, left);
     }
 
-    private static OutboxRelay relayTo(String bootstrapServers) {
+    private static KafkaTemplate<String, String> template(String bootstrapServers, int maxBlockMs,
+                                                          int requestTimeoutMs, int deliveryTimeoutMs) {
         Map<String, Object> config = new HashMap<>();
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        config.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 1000);
-        config.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 1000);
-        config.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, 2000);
-        KafkaTemplate<String, String> template = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(config));
-        return new OutboxRelay(store, template);
+        config.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, maxBlockMs);
+        config.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, requestTimeoutMs);
+        config.put(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, deliveryTimeoutMs);
+        return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(config));
     }
 
     /** Reads the topic from the beginning with a throwaway consumer group and returns the record with that key. */
