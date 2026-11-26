@@ -2,69 +2,90 @@ package com.politest.politest.events;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.politest.politest.events.internal.OutboxRecord;
+import com.politest.politest.events.internal.OutboxStore;
 import com.politest.politest.events.internal.TestCompletedEvent;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.springframework.kafka.core.KafkaTemplate;
 
 class TestEventsTests {
 
-    @SuppressWarnings("unchecked")
-    private final KafkaTemplate<String, String> kafka = mock(KafkaTemplate.class);
+    /** Records what is added to the outbox. */
+    private static class RecordingStore implements OutboxStore {
+        final List<String[]> added = new ArrayList<>();
 
-    private final TestEvents events = new TestEvents(kafka);
+        @Override
+        public void add(String topic, String key, String payload) {
+            added.add(new String[] {topic, key, payload});
+        }
+
+        @Override
+        public List<OutboxRecord> pending(int limit) {
+            return List.of();
+        }
+
+        @Override
+        public void markPublished(long seq) {
+        }
+
+        @Override
+        public int deletePublishedBefore(Instant cutoff) {
+            return 0;
+        }
+    }
 
     @Test
-    void publishesOneEventToTheTopicKeyedByItsId() {
-        when(kafka.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
+    void recordsOneEventInTheOutboxKeyedByItsId() {
+        RecordingStore store = new RecordingStore();
 
-        events.testCompleted(Map.of("ECON", 70), "es");
+        new TestEvents(store).testCompleted(Map.of("ECON", 70), "es");
 
-        ArgumentCaptor<String> topic = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> key = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
-        verify(kafka).send(topic.capture(), key.capture(), value.capture());
-
-        assertEquals("test.completed", topic.getValue());
-        TestCompletedEvent event = TestCompletedEvent.fromJson(value.getValue());
-        assertEquals(event.eventId(), key.getValue());
+        assertEquals(1, store.added.size());
+        String[] entry = store.added.get(0);
+        assertEquals("test.completed", entry[0]);
+        TestCompletedEvent event = TestCompletedEvent.fromJson(entry[2]);
+        assertEquals(event.eventId(), entry[1]);
         assertEquals("es", event.language());
         assertEquals(Map.of("ECON", 70), event.rightPct());
     }
 
     @Test
     void theTimestampIsTruncatedToTheDay() {
-        when(kafka.send(anyString(), anyString(), anyString())).thenReturn(CompletableFuture.completedFuture(null));
+        RecordingStore store = new RecordingStore();
 
-        events.testCompleted(Map.of("ECON", 70), "es");
+        new TestEvents(store).testCompleted(Map.of("ECON", 70), "es");
 
-        ArgumentCaptor<String> value = ArgumentCaptor.forClass(String.class);
-        verify(kafka).send(anyString(), anyString(), value.capture());
-        Instant occurredAt = Instant.parse(TestCompletedEvent.fromJson(value.getValue()).occurredAt());
+        Instant occurredAt = Instant.parse(TestCompletedEvent.fromJson(store.added.get(0)[2]).occurredAt());
         assertEquals(occurredAt.truncatedTo(ChronoUnit.DAYS), occurredAt);
     }
 
     @Test
-    void aFailingBrokerNeverBreaksTheCaller() {
-        when(kafka.send(anyString(), anyString(), anyString())).thenThrow(new IllegalStateException("broker down"));
+    void aFailingDatabaseNeverBreaksTheCaller() {
+        OutboxStore broken = new RecordingStore() {
+            @Override
+            public void add(String topic, String key, String payload) {
+                throw new IllegalStateException("database down");
+            }
+        };
 
-        assertDoesNotThrow(() -> events.testCompleted(Map.of("ECON", 70), "es"));
+        assertDoesNotThrow(() -> new TestEvents(broken).testCompleted(Map.of("ECON", 70), "es"));
     }
 
     @Test
-    void anAsynchronousFailureIsAlsoSwallowed() {
-        when(kafka.send(anyString(), anyString(), anyString()))
-                .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("timeout")));
+    void eachCallProducesADistinctEvent() {
+        RecordingStore store = new RecordingStore();
+        TestEvents events = new TestEvents(store);
 
-        assertDoesNotThrow(() -> events.testCompleted(Map.of("ECON", 70), "es"));
+        events.testCompleted(Map.of("ECON", 70), "es");
+        events.testCompleted(Map.of("ECON", 70), "es");
+
+        assertEquals(2, store.added.size());
+        assertTrue(!store.added.get(0)[1].equals(store.added.get(1)[1]));
     }
 }

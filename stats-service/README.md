@@ -85,5 +85,4 @@ A bad record therefore never blocks its partition and is never lost silently: it
 
 ## What is next
 
-- Transactional outbox in the web application, so that an event is never lost when Kafka is unavailable.
 - A replay tool or endpoint for the dead-letter topic.

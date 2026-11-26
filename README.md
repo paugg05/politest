@@ -98,6 +98,17 @@ Published by the web application when a person sees their result for the first t
 
 The topic has three partitions and the record key is the event id. Delivery is at-least-once, so consumers must tolerate duplicates; `stats-service` does by using the event id as primary key. Records that cannot be processed are retried when the failure may be transient and then moved to the dead-letter topic `test.completed.DLT`. Producer and consumer each keep their own copy of the schema, and the consumer ignores unknown fields so the producer can add fields without a coordinated release.
 
+### Reliable publishing: transactional outbox
+
+The web application does not call Kafka while handling the request. It writes the event to the table `outbox_event` (migration `V5`) and a scheduled relay publishes pending events every two seconds, oldest first.
+
+- **Kafka down:** events stay in the table and are published when the broker is back; the person taking the test notices nothing.
+- **Order:** the relay stops at the first failure, so a later event never overtakes an earlier one.
+- **At-least-once:** an event is marked as published only after the broker acknowledges it. If the application dies in between, the event is sent again, which is why consumers must be idempotent.
+- **Housekeeping:** published rows are deleted after seven days.
+
+In this application the outbox is a durable buffer. In a service that also changes its own state (an order, a payment) the event would be inserted in the same database transaction as that change, which is what makes the pattern atomic.
+
 ## Architecture
 
 `party-service`, `figure-service` and `stats-service` follow a hexagonal (ports and adapters) layout with tactical DDD patterns:
@@ -171,7 +182,7 @@ The credentials in the compose files are development defaults for local use only
 mvn verify        # inside any of the three modules
 ```
 
-The suite covers domain rules, application services against in-memory ports, seed data consistency, the Spring wiring and the architecture rules. `stats-service` also has an end-to-end test that starts a real Kafka broker and a real MySQL database with Testcontainers; it needs Docker and is skipped without it.
+The suite covers domain rules, application services against in-memory ports, seed data consistency, the Spring wiring and the architecture rules. `stats-service` and the web application also have tests that start a real Kafka broker and a real MySQL database with Testcontainers (the consumer pipeline, and the outbox including a Kafka outage); they need Docker and are skipped without it. The pipeline fails if any test is skipped.
 
 A [`Jenkinsfile`](Jenkinsfile) at the repository root builds and tests the four modules in parallel inside a Maven container, archives the jars and publishes the JUnit reports. The Jenkins setup itself runs in Docker and is documented in [`jenkins/README.md`](jenkins/README.md).
 
@@ -180,5 +191,5 @@ A [`Jenkinsfile`](Jenkinsfile) at the repository root builds and tests the four 
 
 ## Roadmap
 
-- Transactional outbox on the producer, so events survive a Kafka outage
 - Replaying records from the dead-letter topic
+- Change data capture (for example Debezium) instead of the polling relay, if the volume ever required it
